@@ -1,39 +1,29 @@
 import axios from 'axios';
 import Notiflix from 'notiflix';
+import SimpleLightbox from 'simplelightbox';
+import 'simplelightbox/dist/simple-lightbox.min.css';
 
 const API_KEY = '37550168-30032e01c9d272bcc53c0e6a4';
 const BASE_URL = 'https://pixabay.com/api/';
-const ITEMS_PER_PAGE = 20;
+const perPage = 20;
 
-const searchForm = document.querySelector('#search-form');
-const loadMoreBtn = document.querySelector('.load-more');
+const searchForm = document.getElementById('search-form');
 const gallery = document.querySelector('.gallery');
+const loadMoreBtn = document.querySelector('.load-more');
 
-let currentPage = 1;
+let page = 1;
 let currentQuery = '';
 
-// Event listener for search form submission
-searchForm.addEventListener('submit', e => {
-  e.preventDefault();
-  const searchQuery = e.target.elements.searchQuery.value.trim();
-  if (searchQuery === '') {
-    return;
-  }
-  currentQuery = searchQuery;
-  currentPage = 1;
-  clearGallery();
-  searchImages(currentQuery, currentPage);
-});
+// Function to display a notification
+function showNotification(message) {
+  Notiflix.Notify.info(message, {
+    position: 'bottom-right',
+    timeout: 3000,
+  });
+}
 
-// Event listener for load more button click
-loadMoreBtn.addEventListener('click', () => {
-  currentPage += 1;
-  searchImages(currentQuery, currentPage);
-});
-
-// Function to search images based on query and page
-async function searchImages(query, page) {
-  showLoader();
+// Function to fetch images from Pixabay API
+async function fetchImages(query) {
   try {
     const response = await axios.get(BASE_URL, {
       params: {
@@ -42,38 +32,17 @@ async function searchImages(query, page) {
         image_type: 'photo',
         orientation: 'horizontal',
         safesearch: true,
-        per_page: ITEMS_PER_PAGE,
+        order: 'popular',
         page: page,
+        per_page: perPage,
       },
     });
-    const { hits, totalHits } = response.data;
-    if (hits.length === 0) {
-      if (page === 1) {
-        showError(
-          'Sorry, there are no images matching your search query. Please try again.'
-        );
-      } else {
-        showEndMessage(
-          "We're sorry, but you've reached the end of search results."
-        );
-      }
-    } else {
-      renderImages(hits);
-      if (hits.length < totalHits) {
-        showLoadMoreButton();
-      } else {
-        hideLoadMoreButton();
-      }
-      if (page === 1) {
-        showSuccess(`Hooray! We found ${totalHits} images.`);
-      }
-      scrollToNextPage();
-    }
+    const data = response.data;
+    return data;
   } catch (error) {
-    showError('Oops! Something went wrong. Please try again.');
-    console.error(error);
+    console.log(error);
+    throw new Error('Failed to fetch images');
   }
-  hideLoader();
 }
 
 // Function to render images in the gallery
@@ -84,12 +53,22 @@ function renderImages(images) {
     fragment.appendChild(card);
   });
   gallery.appendChild(fragment);
+
+  // Initialize SimpleLightbox
+  const lightbox = new SimpleLightbox('.gallery a');
+  lightbox.on('shown.simplelightbox', function () {
+    // Handle event after lightbox is shown
+    console.log('Lightbox is shown');
+  });
 }
 
 // Function to create a single image card
 function createImageCard(image) {
   const card = document.createElement('div');
   card.classList.add('photo-card');
+
+  const link = document.createElement('a');
+  link.href = image.largeImageURL;
 
   const img = document.createElement('img');
   img.src = image.webformatURL;
@@ -105,16 +84,17 @@ function createImageCard(image) {
   const downloads = createInfoItem('Downloads', image.downloads);
 
   info.append(likes, views, comments, downloads);
-  card.append(img, info);
+  link.appendChild(img);
+  card.append(link, info);
 
   return card;
 }
 
-// Function to create a single info item
+// Function to create an info item
 function createInfoItem(label, value) {
   const item = document.createElement('p');
   item.classList.add('info-item');
-  item.innerHTML = `<b>${label}: </b>${value}`;
+  item.innerHTML = `<b>${label}:</b> ${value}`;
   return item;
 }
 
@@ -123,48 +103,85 @@ function clearGallery() {
   gallery.innerHTML = '';
 }
 
+// Function to handle form submit
+function handleFormSubmit(event) {
+  event.preventDefault();
+  const searchQuery = event.target.elements.searchQuery.value.trim();
+  if (searchQuery === '') {
+    return;
+  }
+  currentQuery = searchQuery;
+  page = 1;
+  clearGallery();
+  searchImages(currentQuery);
+}
+
+// Function to handle load more button click
+function handleLoadMoreClick() {
+  page += 1;
+  searchImages(currentQuery);
+}
+
+// Function to search images based on the query
+async function searchImages(query) {
+  showLoader();
+  try {
+    const data = await fetchImages(query);
+    const images = data.hits;
+    hideLoader();
+    if (images.length > 0) {
+      renderImages(images);
+      if (images.length === perPage) {
+        showLoadMoreBtn();
+      } else {
+        hideLoadMoreBtn();
+      }
+    } else {
+      showNotification(
+        'Sorry, there are no images matching your search query. Please try again.'
+      );
+    }
+  } catch (error) {
+    hideLoader();
+    showError();
+  }
+}
+
 // Function to show the loader
 function showLoader() {
-  Notiflix.Loading.arrows('Loading data, please wait...');
+  document.body.classList.add('loading');
 }
 
 // Function to hide the loader
 function hideLoader() {
-  Notiflix.Loading.remove();
+  document.body.classList.remove('loading');
 }
 
 // Function to show the load more button
-function showLoadMoreButton() {
-  loadMoreBtn.style.display = 'block';
+function showLoadMoreBtn() {
+  loadMoreBtn.classList.add('visible');
 }
 
 // Function to hide the load more button
-function hideLoadMoreButton() {
-  loadMoreBtn.style.display = 'none';
+function hideLoadMoreBtn() {
+  loadMoreBtn.classList.remove('visible');
 }
 
-// Function to scroll to the next page
-function scrollToNextPage() {
-  const cardHeight = document
-    .querySelector('.gallery')
-    .firstElementChild.getBoundingClientRect().height;
-  window.scrollBy({
-    top: cardHeight * 2,
-    behavior: 'smooth',
-  });
+// Function to show the error message
+function showError() {
+  const errorMessage = document.querySelector('.error-message');
+  errorMessage.classList.add('visible');
 }
 
-// Function to show a success message
-function showSuccess(message) {
-  Notiflix.Notify.success(message);
+// Function to hide the error message
+function hideError() {
+  const errorMessage = document.querySelector('.error-message');
+  errorMessage.classList.remove('visible');
 }
 
-// Function to show an error message
-function showError(message) {
-  Notiflix.Notify.failure(message);
-}
+// Event listeners
+searchForm.addEventListener('submit', handleFormSubmit);
+loadMoreBtn.addEventListener('click', handleLoadMoreClick);
 
-// Function to show the end message
-function showEndMessage(message) {
-  Notiflix.Notify.info(message);
-}
+// Initial setup
+hideLoadMoreBtn();
