@@ -117,9 +117,9 @@ function handleFormSubmit(event) {
 }
 
 // Function to handle load more button click
-function handleLoadMoreClick() {
+function handleLoadMoreBtnClick() {
   page += 1;
-  searchImages(currentQuery);
+  loadMoreImages(currentQuery);
 }
 
 // Function to search images based on the query
@@ -140,6 +140,29 @@ async function searchImages(query) {
       showNotification(
         'Sorry, there are no images matching your search query. Please try again.'
       );
+    }
+  } catch (error) {
+    hideLoader();
+    showError();
+  }
+}
+
+// Function to load more images based on the query
+async function loadMoreImages(query) {
+  showLoader();
+  try {
+    const data = await fetchImages(query);
+    const images = data.hits;
+    hideLoader();
+    if (images.length > 0) {
+      renderImages(images);
+      if (images.length === perPage) {
+        showLoadMoreBtn();
+      } else {
+        hideLoadMoreBtn();
+      }
+    } else {
+      showNotification('No more images to load.');
     }
   } catch (error) {
     hideLoader();
@@ -181,7 +204,7 @@ function hideError() {
 
 // Event listeners
 searchForm.addEventListener('submit', handleFormSubmit);
-loadMoreBtn.addEventListener('click', handleLoadMoreClick);
+loadMoreBtn.addEventListener('click', handleLoadMoreBtnClick);
 
 // Initial setup
 hideLoadMoreBtn();
