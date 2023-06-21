@@ -5,7 +5,7 @@ import 'simplelightbox/dist/simple-lightbox.min.css';
 
 const API_KEY = '37550168-30032e01c9d272bcc53c0e6a4';
 const BASE_URL = 'https://pixabay.com/api/';
-const perPage = 20;
+const perPage = 40;
 
 const searchForm = document.getElementById('search-form');
 const gallery = document.querySelector('.gallery');
@@ -13,6 +13,7 @@ const loadMoreBtn = document.querySelector('.load-more');
 
 let page = 1;
 let currentQuery = '';
+let lightbox; // Variable to store the SimpleLightbox instance
 
 // Function to display a notification
 function showNotification(message) {
@@ -53,20 +54,6 @@ function renderImages(images) {
     fragment.appendChild(card);
   });
   gallery.appendChild(fragment);
-
-  // Initialize SimpleLightbox
-  const lightbox = new SimpleLightbox('.gallery a');
-  lightbox.on('shown.simplelightbox', function () {
-    // Handle event after lightbox is shown
-    console.log('Lightbox is shown');
-  });
-
-  // Check if Load More button should be shown
-  if (images.length === perPage) {
-    showLoadMoreBtn();
-  } else {
-    hideLoadMoreBtn();
-  }
 }
 
 // Function to create a single image card
@@ -82,27 +69,10 @@ function createImageCard(image) {
   img.alt = image.tags;
   img.loading = 'lazy';
 
-  const info = document.createElement('div');
-  info.classList.add('info');
-
-  const likes = createInfoItem('Likes', image.likes);
-  const views = createInfoItem('Views', image.views);
-  const comments = createInfoItem('Comments', image.comments);
-  const downloads = createInfoItem('Downloads', image.downloads);
-
-  info.append(likes, views, comments, downloads);
   link.appendChild(img);
-  card.append(link, info);
+  card.appendChild(link);
 
   return card;
-}
-
-// Function to create an info item
-function createInfoItem(label, value) {
-  const item = document.createElement('p');
-  item.classList.add('info-item');
-  item.innerHTML = `<b>${label}:</b> ${value}`;
-  return item;
 }
 
 // Function to clear the gallery
@@ -138,12 +108,18 @@ async function searchImages(query) {
     hideLoader();
     if (images.length > 0) {
       renderImages(images);
+      if (images.length === perPage) {
+        showLoadMoreBtn();
+      } else {
+        hideLoadMoreBtn();
+      }
     } else {
       showNotification(
         'Sorry, there are no images matching your search query. Please try again.'
       );
       hideLoadMoreBtn();
     }
+    initializeSimpleLightbox(); // Reinitialize SimpleLightbox after rendering new images
   } catch (error) {
     hideLoader();
     showError();
@@ -159,10 +135,16 @@ async function loadMoreImages(query) {
     hideLoader();
     if (images.length > 0) {
       renderImages(images);
+      if (images.length === perPage) {
+        showLoadMoreBtn();
+      } else {
+        hideLoadMoreBtn();
+      }
     } else {
       showNotification('No more images to load.');
       hideLoadMoreBtn();
     }
+    initializeSimpleLightbox(); // Reinitialize SimpleLightbox after rendering new images
   } catch (error) {
     hideLoader();
     showError();
@@ -199,6 +181,15 @@ function showError() {
 function hideError() {
   const errorMessage = document.querySelector('.error-message');
   errorMessage.classList.remove('visible');
+}
+
+// Function to initialize SimpleLightbox
+function initializeSimpleLightbox() {
+  if (lightbox) {
+    // If a SimpleLightbox instance already exists, destroy it first
+    lightbox.destroy();
+  }
+  lightbox = new SimpleLightbox('.gallery a');
 }
 
 // Event listeners
