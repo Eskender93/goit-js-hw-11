@@ -76,3 +76,10 @@ button[type='submit'] {
   border: none;
   cursor: pointer;
 }
+
+.load-more {
+  display: none;
+}
+.load-more.visible {
+  display: block;
+}

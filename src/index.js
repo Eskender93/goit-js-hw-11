@@ -60,6 +60,13 @@ function renderImages(images) {
     // Handle event after lightbox is shown
     console.log('Lightbox is shown');
   });
+
+  // Check if Load More button should be shown
+  if (images.length === perPage) {
+    showLoadMoreBtn();
+  } else {
+    hideLoadMoreBtn();
+  }
 }
 
 // Function to create a single image card
@@ -131,15 +138,11 @@ async function searchImages(query) {
     hideLoader();
     if (images.length > 0) {
       renderImages(images);
-      if (images.length === perPage) {
-        showLoadMoreBtn();
-      } else {
-        hideLoadMoreBtn();
-      }
     } else {
       showNotification(
         'Sorry, there are no images matching your search query. Please try again.'
       );
+      hideLoadMoreBtn();
     }
   } catch (error) {
     hideLoader();
@@ -156,13 +159,9 @@ async function loadMoreImages(query) {
     hideLoader();
     if (images.length > 0) {
       renderImages(images);
-      if (images.length === perPage) {
-        showLoadMoreBtn();
-      } else {
-        hideLoadMoreBtn();
-      }
     } else {
       showNotification('No more images to load.');
+      hideLoadMoreBtn();
     }
   } catch (error) {
     hideLoader();
@@ -182,12 +181,12 @@ function hideLoader() {
 
 // Function to show the load more button
 function showLoadMoreBtn() {
-  loadMoreBtn.classList.add('visible');
+  loadMoreBtn.style.display = 'block';
 }
 
 // Function to hide the load more button
 function hideLoadMoreBtn() {
-  loadMoreBtn.classList.remove('visible');
+  loadMoreBtn.style.display = 'none';
 }
 
 // Function to show the error message
